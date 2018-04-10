@@ -1,0 +1,100 @@
+---
+title: "HW on Credit Card Fraud"
+author: "Type your names here"
+output: html_document
+---
+
+This data set is from Kaggle. Import the data set using the **fread** function in R, and then answer the questions. 
+
+```{r}
+df_Credit<- fread('creditcard.csv')
+```
+
+Q1: Show the data elements in the file. 
+
+```{r}
+colnames(df_Credit)
+dim(df_Credit)
+```
+
+Q2: Using the **lm** function, fit a regression line to show the dependence of "Class" (fraudulent=1, non-fraudulent=0) on the other variables except for "Time". (Make your dependent variable numeric if needed.) How many coefficients in your model are significant? Why? 
+
+```{r}
+x_credit<- matrix(df_Credit[,c(-1,-31)])
+dim(df_Credit[,c(-1,-31)])
+#y<- matrix(as.numeric(df_Credit$Class))
+y<- as.numeric(df_Credit$Class)
+class(y)
+class(x_credit)
+lm(y~x_credit)
+
+```
+
+
+Q3: Make sure your independent variables are in a matrix called $X$, and also assume the same is true for the dependent variable in a vector called $Y$. Enhance matrix $X$ by adding a first column of 1s. Then compute the following expression: 
+
+$$
+b = (X^\top X)^{-1} (X^\top Y)
+$$
+
+```{r}
+
+```
+
+Q4: Compare this to the previous answer. 
+
+
+Q5: What is the predicted value if the $X$ values for one credit card charge was the mean of all the $X$ variables? 
+
+```{r}
+
+```
+
+
+Q6: What is the predicted value if the $X$ values for one charge is the mean of all $X$ values when Class=1? Comment.
+
+```{r}
+
+```
+
+
+The next few questions pertain to the confusion matrix shown below. 
+
+Q7: You are given the following confusion matrix from a test sample of credit cards. The predicted values are on the rows and the true values are on the columns. Non-fraudulent charges are 0 and fraudulent charges are 1. A true positive is a fraud charge that is predicted correctly. 
+
+|   | 0  | 1  |
+|---|----|----|
+| 0 | 87 | 3  |
+| 1 | 4  | 15 |
+
+Compute the statistical significance of the classifier. 
+
+```{r}
+
+```
+
+Q8: What is the accuracy?
+
+```{r}
+
+```
+
+Q9: Compute precision, recall, and F1. 
+
+
+```{r}
+
+```
+
+Q10: Compute sensitivity and specificity.
+
+
+```{r}
+X<- data.frame('One'=c(1,1),'Two'=c(2,2))
+X^(1:1) %>% print
+
+```
+
+
+
+
