@@ -1,0 +1,247 @@
+---
+title: "HW_Introduction_to_R"
+author: "Sanjiv R Das"
+date: "April 3, 2018"
+output: html_document
+---
+
+Submissions will be checked for completeness. 
+
+Please answer questions on the Rmd file. Make sure you can generate the entire HTML file with solutions. Upload only the HTML file with output. The submission file titles should be of the form "HW1_GroupName.html". "GroupName" can be some combination of some of the group members names. Make sure you list all group members names in the author field above in the YAML header. 
+
+Q1: This is not really a question but an exercise. Type in "demo(grapics)" in the R console and then run through the various cases to understand how to plot different types of graphs. 
+
+```{r}
+demo(graphics)
+```
+
+Q2: Open the file "mountains.txt" in excel or in a flat file editor and take a look at it. Then read it into a dataframe in R. How many rows and columns does the dataframe have? (All data files for the course are in the DSTMAA_data folder.)
+
+```{r}
+df_mountains<- read.table('mountains.txt')
+dim(df_mountains)  #35 rows and 3 columns
+```
+
+Q3: Write an expression that gives the column names. 
+
+```{r}
+colnames(df_mountains)[1]<-'distance'  #instance of changing rename the first column 'dist' to 'distance'
+df_mountains
+```
+
+Q4: Show scatter plots for each pair of variables. Eyeballing your plots, is the correlation between the pairs of variables positive or negative? 
+
+```{r}
+pairs(df_mountains,main="Scatter plot for each pair of varibales")
+```
+Answers: 
+distance~climb   roughly positive
+distance~time     roughly positive
+climb~time   roughly positive
+
+
+Q5: Check your intuition from Q4 by running the correlation table for the variables in your data set. 
+
+```{r}
+cor(df_mountains)
+```
+
+Q6: How will you create a vector of all the mountain names in the data set?
+
+```{r}
+rownames(df_mountains)->df_mountains_rows
+df_mountains_rows
+is.vector(df_mountains_rows)
+```
+
+Q7: Plot the scatter plot of distance on the x-axis and time on the y-axis. 
+
+```{r}
+plot(x=df_mountains$distance,xlab='distance',
+     y=df_mountains$time,ylab='time',
+     main='Scatter plot of Distance and Time')
+```
+
+Q8: Run a linear regression of time against distance. Explain your findings by interpreting the various characteristics of the regression output, such as $R^2$, $t$-statistics, $F$-statistic, $p$-values, coefficients, standard errors, etc. 
+
+```{r}
+lm_time_dist=lm(time~distance,data=df_mountains)
+summary(lm_time_dist)
+```
+The relationship between time and distance is significant. The slope is positive, with low standard error, hence the $t$-statistic is highly significant. This is also reflected in the $p$-value which is zero, i.e., the probability that the coefficient in the regression is zero is zero. The $R^2$ in the regression is 84% which means that dist explains 84% of the variation in time. The $F$-statistic is very high with a $p$-value of zero, meaning that the regression is well-specified. 
+
+Q9: Add the least squares regression line and color the line blue and make it with a line width of 3. 
+
+```{r}
+plot(x=df_mountains$distance,xlab='distance',
+     y=df_mountains$time,ylab='time',
+     main='Scatter plot of Distance and Time')
+abline(lm_time_dist,col='blue',lwd=3)
+
+```
+
+Q10: Show the various attributes of the regression output. How many attributes are there? 
+
+```{r}
+summary(lm_time_dist)
+```
+
+Q11: Using the **magrittr** package run the regression and pass it to the summary function using pipes. 
+
+```{r}
+library(magrittr)
+lm(time~distance,data=df_mountains) %>% summary
+```
+
+Q12: Create a logical vector using the command: seq(-3,3,length=200) > 0
+
+```{r}
+logical_vector<- (seq(-3,3,length=200) > 0)
+is.vector(logical_vector)
+```
+
+Q13: Negate this vector using the negation operator "!". 
+
+```{r}
+!logical_vector
+```
+
+Q14: Compute the truth table for logical AND
+with the following command: 
+c(T,T,F,F) & c(T,F,F,T)
+and interpret the result. 
+
+```{r}
+c(T,T,F,F) & c(T,F,F,T)
+```
+Answers:
+TRUE TRUE conditions in AND computation returns TRUE.
+TRUE FALSE conditions in AND computation returns FALSE.
+FALSE FALSE conditions in AND computation returns FALSE.
+FALSE TRUE conditions in AND computation returns FALSE.
+
+Q15: Explore arithmetic with logical and numeric operators with the following command, and interpret and explain the output: 
+1:3 + c(T,F,T)
+
+```{r}
+1:3 + c(T,F,T)
+```
+Answers:
+In logical computation, the TRUE and FALSE condition can be treated in 1,0 respectively. 
+
+
+Q16: Compute the intersection of {1, 2, . . . , 10} and {5, 6, . . . , 15}
+
+```{r}
+temp_a<- seq(1,10)
+temp_b<- seq(5,15)
+intersect(temp_a,temp_b) %>% print
+```
+
+Q17: Create a factor using the following command:
+drinks <- factor(c("beer","beer","wine","water"))
+
+```{r}
+drinks <- factor(c("beer","beer","wine","water"))
+```
+
+Q18: Examine the representation of the factor
+unclass(drinks)
+and interpret the result, with an explanation.
+
+```{r}
+unclass(drinks)
+```
+Answers:
+The unclass function sorted the 'drinks' into increasing order of x with unique value. 
+
+
+Q19: Construct a 2×2 data frame, X say. Give it column names {One, Two}. Experiment with X^(1:K), where K takes values 1:4. How does the recycling rule behave? Explain what you see. 
+
+```{r}
+X<- data.frame('One'=c(1,1),'Two'=c(2,2))
+
+for (variable in seq(1:4)) {
+  print(X^(1:variable))
+}
+```
+Answers:
+The values of column 'One' remain the same.
+
+
+Q20: The function system.time returns timings for R operations. Examine the help system about this
+function. For a $10^7 \times 2$ matrix, X, and vector y of length $10^7 \times 1$ compute (a number of times) $X^\top y$ using matrix multiplication and the function **crossprod**. Which is quicker? Why? 
+
+```{r}
+X<- matrix(1,10**7,2)
+y<- matrix(1,10**7)
+dim(t(X))
+dim(y)
+#1. Matrix Multiplication
+system.time(t(X)%*%y)
+
+#2.Crossprod function 
+system.time(crossprod(X,y))
+```
+Answer:
+The crossprod functions gives faster computation results.
+
+
+Q21: Given that 
+$$
+A = \left[ \begin{array}{2} 3 & 2 \\ 2 & 4 \end{array}   \right],  \quad B = \left[ \begin{array}{1} 3 \\  4 \end{array}   \right]
+$$
+
+What is the value of ${\bf A}^{-1} {\bf A} {\bf B}$?
+
+```{r}
+A<- matrix(c(3,2,2,4),2,2) 
+B<- matrix(c(3,4))
+solve(A)%*%A %*% B 
+```
+Answer:
+The value is B.
+
+Q22: Using the same definitions of ${\bf A}$ and ${\bf B}$ above, and given that 
+
+$$
+{\bf w} =  \left[ \begin{array}{1} w_1 \\  w_2 \end{array}   \right]
+$$
+
+What is the dimension of $({\bf w}^\top {\bf B})({\bf A}{\bf A}{\bf A}^{-1}{\bf B})$?
+
+ANS: 
+```{r}
+# The value should be a 2*1 matrix. 
+```
+
+
+Q23: Read this file from the web using the following command:
+
+lines = readLines("http://www.just-pooh.com/tao.html")
+
+What sort of data object is "lines"?
+
+```{r}
+lines = readLines("http://www.just-pooh.com/tao.html")
+class(lines)
+```
+Answer:
+The lines object is a type of character.
+
+Q24: How many lines are there on this web page?
+
+```{r}
+length(lines)
+```
+Answers:
+Have 164 lines in total. 
+
+Q25: Convert this data object for the web page into a **list** object and then print out the 121st line of the web page from this list object. 
+
+```{r}
+list_line <- as.list(lines)
+class(list_line)
+list_line[121][1]
+```
+
