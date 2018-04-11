@@ -2,8 +2,8 @@
 title: "HW on Credit Card Fraud"
 author: "yuexi li"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 ---
 
 This data set is from Kaggle. Import the data set using the **fread** function in R, and then answer the questions. 
@@ -72,24 +72,26 @@ Q7: You are given the following confusion matrix from a test sample of credit ca
               True values
             |   | 0  | 1  |        |   | 0  | 1  |
 Predicted   |---|----|----|        |---|----|----|
-            | 0 | 87 | 3  |        | 0 | fn | tn |
+            | 0 | 87 | 3  |        | 0 | tn | fn |
             | 1 | 4  | 15 |        | 1 | fp | tp |
 
 Compute the statistical significance of the classifier. 
 
 ```{r}
+library(magrittr)
 cft_actual <- matrix(c(87,4,3,15),2) %>% print
-fn <- cft_actual[1, 1] 
-tn <- cft_actual[1, 2]
+tn <- cft_actual[1, 1] 
+fn <- cft_actual[1, 2]
 fp <- cft_actual[2, 1]
 tp <- cft_actual[2, 2]
 
 #Reference Dumb matrix
-fn_dumb <- ((fn+tn)*(fn+fp)/(fn+tn+fp+tp)) %>% round 
-fp_dumb <- ((fn+fp)*(fp+tp)/(fn+tn+fp+tp)) %>% round 
-tn_dumb <- ((fn+tn)*(tn+tp)/(fn+tn+fp+tp)) %>% round 
-tp_dumb <- ((tp+tn)*(fp+tp)/(fn+tn+fp+tp)) %>% round 
-cft_dumb<-matrix(c(fn_dumb,fp_dumb,tn_dumb,tp_dumb),2) %>% print
+tn_dumb <- ((fn+tn)*(tn+fp)/(fn+tn+fp+tp)) %>% round 
+fp_dumb <- ((tp+fp)*(fp+tn)/(fn+tn+fp+tp)) %>% round 
+fn_dumb <- ((fn+tn)*(fn+tp)/(fn+tn+fp+tp)) %>% round 
+tp_dumb <- ((tp+fn)*(fp+tp)/(fn+tn+fp+tp)) %>% round 
+
+cft_dumb<-matrix(c(tn_dumb,fp_dumb,fn_dumb,tp_dumb),2) %>% print
 
 cft_chisq<- (fn-fn_dumb)^2/fn_dumb + (fp-fp_dumb)^2/fp_dumb +(tp-tp_dumb)^2/tp_dumb+(tn-tn_dumb)^2/tn_dumb 
 #dof=1
@@ -99,7 +101,7 @@ pchisq(cft_chisq, df=1, ncp = 0, lower.tail = FALSE) %>% print
 Q8: What is the accuracy?
 
 ```{r}
-accuracy <- ((tp + fn)/(tp + tn + fp + fn) )%>% print
+accuracy <- ((tp + tn)/(tp + tn + fp + fn) ) %>% print
 ```
 
 Q9: Compute precision, recall, and F1. 
@@ -107,7 +109,7 @@ Q9: Compute precision, recall, and F1.
 
 ```{r}
 sprintf("percision  %f", percision <- (tp/(tp+fp)))
-sprintf("recall     %f", recall <- (tp/(tp+tn)))
+sprintf("recall     %f", recall <- (tp/(tp+fn)))
 sprintf("F1         %f", F1<- 2/((1/recall)+(1/percision)))
 ```
 
@@ -117,7 +119,6 @@ Q10: Compute sensitivity and specificity.
 ```{r}
 sensitivity<- recall %>% sprintf("sensitivity  %f", .) %>% print
 specificity<- (tn/(tn+fp))  %>% sprintf("specificity  %f", .) %>% print
-
 ```
 
 
