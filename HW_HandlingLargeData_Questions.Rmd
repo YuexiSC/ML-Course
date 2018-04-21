@@ -108,12 +108,10 @@ data_1980<-data_shaped[base_name,]
 data_1980_percentage<-data_1980
 for(col_idx in 2:ncol(data_1980)) {
     col=as.numeric(data_1980[,col_idx])
-    data_1980_percentage[,col_idx]<-col/sum(col,na.rm = TRUE)
-}
-data_1980_percentage[1,2:38]
-data_1980_percentage[2,2:38]
+    data_1980_percentage[,col_idx]<-col*100/sum(col,na.rm = TRUE)
+    }
 
-min_list<-list()
+min_list<-c()
 max_list<-c()
 idx <-1  
 for(row_idx in 1:nrow(data_1980)) {
@@ -131,15 +129,20 @@ for(row_idx in 1:nrow(data_1980)) {
     min_list[[idx]]<-max_decrease
     idx<-idx+1
 }
-
 data_1980$max_increase<- max_list
 data_1980$max_decrease<- min_list
 
-#5.Get the 
+
+data_1980[data_1980$max_decrease==min(data_1980$max_decrease),]
+#5.Get the Final Largest percentage increase and Largest percentage decrease\
+idx_max = sort(as.matrix(data_1980$max_increase),decreasing=TRUE,index.return=TRUE)$ix
+head(data_1980[idx_max,],3)
+idx_min = sort(as.matrix(data_1980$max_decrease),decreasing=FALSE,index.return=TRUE)$ix
+head(data_1980[idx_min,],3)
 ```
 Answers:
-Largest percentage of increase: Krystle
-Largest percentage of decrease: Melany//Ranada
+Largest percentage of increase: Ashley
+Largest percentage of decrease: Jennifer
 
 
 #### QUESTION 5
