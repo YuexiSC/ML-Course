@@ -26,7 +26,6 @@ First, download the zip file and unzip it to grab the contents. You will see lot
 ```{r}
 library(data.table)
 library(magrittr)
-
 setwd("/Users/liyuexi/Documents/Project/Homework/HW2/namesbystate/")
 getwd()
 
@@ -41,19 +40,6 @@ sample(dataset)
 What is the most popular name of all time across both genders? 
 ```{r}
 library(plyr)
-unique(dataset$sex)
-###Old: Fall Apart in both Male and Female
-#=====================================================================
-F_set<-dataset[dataset$sex=='F',]
-M_set<-dataset[dataset$sex=='M',]
-
-female_name<- as.data.frame(count(F_set,"name")) %>% print
-f_name<-female_name[female_name$freq==max(female_name$freq),] %>% print
-male_name<- as.data.frame(count(M_set,"name"))
-m_name<-male_name[male_name$freq==max(male_name$freq),] %>% print
-
-###Updated: should be take into account the whole population
-#=====================================================================
 aggre_data<-aggregate(occurrence ~ name,dataset,sum)
 idx = sort(as.matrix(aggre_data$occurrence),decreasing=TRUE,index.return=TRUE)$ix
 head(aggre_data[idx,],15)
@@ -70,73 +56,86 @@ What is the most gender ambiguous name in 2013? 1945? (you need to come up with 
 ```{r}
 library(dplyr)
 library(plyr)
-
-set_2013_F<-filter(dataset,birth_year==2013,sex=='F')
-set_2013_M<-filter(dataset,birth_year==2013,sex=='M')
-inner_2013<-merge(set_2013_F,set_2013_M, by='name') 
-
-final_2013<- subset(inner_2013,select=c(name,occurrence.x,occurrence.y))
-final_2013[,2]
-inner_2013[,5]
-
-
-final_2013$total_2013<-(final_2013$occurrence.x + final_2013$occurrence.y)
-final_2013<- subset(final_2013,select=c(name,total_2013))
-final_2013
-ffff_2013<-aggregate(name~c(occurrence.x,occurrence.y))
-  
-f_name_2013<- as.data.frame(count(set_2013_F,name))
-m_name_2013<- as.data.frame(count(set_2013_M,name))
-name_inner_2013<- merge(f_name_2013, m_name_2013, by='name')
-name_inner_2013$total<-name_inner_2013$n.x+name_inner_2013$n.y
-colnames(name_inner_2013)<- c('name','female_count','male_count','total_count')
-name_inner_2013[order(name_inner_2013$total_count,decreasing = TRUE),][1,] %>% print
-
-set_1945<-dataset[dataset$birth_year==1945,]
-set_1945_F<-set_1945[set_1945$sex=='F',] 
-set_1945_M<-set_1945[set_1945$sex=='M',]
-f_name_1945<- as.data.frame(count(set_1945_F,name))
-m_name_1945<- as.data.frame(count(set_1945_M,name))
-name_inner_1945<- merge(f_name_1945, m_name_1945, by='name')
-name_inner_1945$total<-name_inner_1945$n.x+name_inner_1945$n.y
-colnames(name_inner_1945)<- c('name','female_count','male_count','total_count')
-name_inner_1945[order(name_inner_1945$total_count,decreasing = TRUE),][1,] %>% print
-
+Ambiguous_name<- function(df,input_year){
+  #1.Subset the dataset into gender groups, and inner join two datasets by name. 
+  inner_year<-merge( filter(df,birth_year==input_year, sex=='F'), filter(df,birth_year==input_year, sex=='M'), by='name')
+  #2.Create a new column named "common" which is the min values of name of occurence in female and male.
+  final_year<- subset(inner_year,select=c(name,occurrence.x,occurrence.y)) 
+  final_year<- aggregate(final_year[,2:3],list(final_year[,1]),sum)
+  colnames(final_year)<- c('name','occurence_F','occurence_M')
+  final_year$common<- apply(final_year, 1, FUN=min)
+  #3.Define ambiguous metric: By amount of "common"
+  idx = sort(as.matrix(final_year$common),decreasing=TRUE,index.return=TRUE)$ix
+  head(final_year[idx,],1)
+}
+#Get results for 1945 & 2013
+Ambiguous_name(dataset,1945)
+Ambiguous_name(dataset,2013)
 ```
 Answer:
-ambiguous name in 2013：Riley
 ambiguous name in 1945：Leslie
+ambiguous name in 2013：Riley
 
 #### QUESTION 4
 Of the names represented in the data, find the name that has had the largest percentage increase in popularity since 1980. Largest decrease?
 
 ```{r}
-data_1980<- data.table (dataset[dataset$birth_year==1980,])
-data_1981<- data.table (dataset[dataset$birth_year==1981,])
+library(dplyr)
+library(reshape2)
+library(reshape)
+library(caTools)
+library(magrittr)
+#Question: Names has had largest percentage increase
 
-data_1980$count<- 1
-setkey(data_1980,name)
-data_1980<- data_1980[,sum(count),by=name]
+#1. Aggregate dataset by Name and Birth_year get the total number of occurence 
+dataset2<- aggregate(dataset$occurrence~name+birth_year, dataset,sum)
+base_name<- dataset2[dataset2$birth_year==1980,]$name
 
-data_1981$count<- 1
-setkey(data_1981,name)
-data_1981<-data_1981[,sum(count),by=name]
+#2. Reshape the table 
+idx_year<- list()
+for (ix in unique(dataset2$birth_year)) {
+    ix<- paste("bir_",ix, sep="")
+    idx_year<- c(idx_year,ix)
+  }
+data_dcast<- dcast(dataset2, name ~ birth_year)
+data_dcast
+colnames(data_dcast)<-c("name",idx_year)
+data_shaped<-subset(data_dcast,select=c(name,bir_1980:bir_2016))
+data_shaped<-aggregate(.~name, data_shaped, FUN=sum,na.action=NULL)
+data_1980<-data_shaped[base_name,]
 
-data_all<- merge(data_1980,data_1981,by='name',all=TRUE)
-colnames(data_all)<- c('name','num_1980','num_1981')
-data_all$num_1980<- (data_all$num_1980)*1.0/sum(data_all$num_1980)
+#3.Iterate each row through a running window to get max increase and min increase and insert into table
+data_1980_percentage<-data_1980
+for(col_idx in 2:ncol(data_1980)) {
+    col=as.numeric(data_1980[,col_idx])
+    data_1980_percentage[,col_idx]<-col/sum(col,na.rm = TRUE)
+}
+data_1980_percentage[1,2:38]
+data_1980_percentage[2,2:38]
 
+min_list<-list()
+max_list<-c()
+idx <-1  
+for(row_idx in 1:nrow(data_1980)) {
+    max_increase<-0
+    row=as.numeric(data_1980_percentage[row_idx,2:38])
+    #print(row)
+    row_mins<- runmin(row,length(row),align = c("right"))
+    #print(row_mins)
+    #print(row-row_mins)
+    max_increase<- max(row-row_mins,na.rm=TRUE)
+    #print(max_increase)
+    max_list[[idx]]<-max_increase
+    row_maxs<- runmax(row,length(row),align = c("right"))
+    max_decrease<- min(row-row_maxs,na.rm=TRUE)
+    min_list[[idx]]<-max_decrease
+    idx<-idx+1
+}
 
+data_1980$max_increase<- max_list
+data_1980$max_decrease<- min_list
 
-
-data_all$change<- ((data_all$num_1980)/sum(data_all$num_1980)-(data_all$num_1981)/sum(data_all$num_1981)*100)
-
-data_all_sorted<- arrange(data_all, data_all$change)
-data_all_sorted<-filter(data_all_sorted,is.na(num_1980)==FALSE, is.na(num_1981)==FALSE)
-
-largest_increase<- data_all_sorted[data_all_sorted$change== max(data_all_sorted$change),] %>% print
-largest_decrease<- data_all_sorted[data_all_sorted$change== min(data_all_sorted$change),] %>% print
-
+#5.Get the 
 ```
 Answers:
 Largest percentage of increase: Krystle
