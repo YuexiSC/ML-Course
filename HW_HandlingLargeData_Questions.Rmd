@@ -44,10 +44,6 @@ aggre_data<-aggregate(occurrence ~ name,dataset,sum)
 idx = sort(as.matrix(aggre_data$occurrence),decreasing=TRUE,index.return=TRUE)$ix
 head(aggre_data[idx,],15)
 ```
-Answer1:
-Female: Elizabeth
-Male: John, William
-
 Answer2:
 James
 
@@ -71,6 +67,7 @@ Ambiguous_name<- function(df,input_year){
 #Get results for 1945 & 2013
 Ambiguous_name(dataset,1945)
 Ambiguous_name(dataset,2013)
+
 ```
 Answer:
 ambiguous name in 1945：Leslie
@@ -85,6 +82,7 @@ library(reshape2)
 library(reshape)
 library(caTools)
 library(magrittr)
+library(plyr)
 #Question: Names has had largest percentage increase
 
 #1. Aggregate dataset by Name and Birth_year get the total number of occurence 
@@ -96,7 +94,8 @@ idx_year<- list()
 for (ix in unique(dataset2$birth_year)) {
     ix<- paste("bir_",ix, sep="")
     idx_year<- c(idx_year,ix)
-  }
+}
+
 data_dcast<- dcast(dataset2, name ~ birth_year)
 data_dcast
 colnames(data_dcast)<-c("name",idx_year)
@@ -110,19 +109,14 @@ for(col_idx in 2:ncol(data_1980)) {
     col=as.numeric(data_1980[,col_idx])
     data_1980_percentage[,col_idx]<-col*100/sum(col,na.rm = TRUE)
     }
-
 min_list<-c()
 max_list<-c()
 idx <-1  
 for(row_idx in 1:nrow(data_1980)) {
     max_increase<-0
     row=as.numeric(data_1980_percentage[row_idx,2:38])
-    #print(row)
     row_mins<- runmin(row,length(row),align = c("right"))
-    #print(row_mins)
-    #print(row-row_mins)
     max_increase<- max(row-row_mins,na.rm=TRUE)
-    #print(max_increase)
     max_list[[idx]]<-max_increase
     row_maxs<- runmax(row,length(row),align = c("right"))
     max_decrease<- min(row-row_maxs,na.rm=TRUE)
@@ -132,13 +126,12 @@ for(row_idx in 1:nrow(data_1980)) {
 data_1980$max_increase<- max_list
 data_1980$max_decrease<- min_list
 
-
-data_1980[data_1980$max_decrease==min(data_1980$max_decrease),]
 #5.Get the Final Largest percentage increase and Largest percentage decrease\
 idx_max = sort(as.matrix(data_1980$max_increase),decreasing=TRUE,index.return=TRUE)$ix
-head(data_1980[idx_max,],3)
+head(data_1980[idx_max,],1)
 idx_min = sort(as.matrix(data_1980$max_decrease),decreasing=FALSE,index.return=TRUE)$ix
-head(data_1980[idx_min,],3)
+head(data_1980[idx_min,],1)
+
 ```
 Answers:
 Largest percentage of increase: Ashley
@@ -149,10 +142,45 @@ Largest percentage of decrease: Jennifer
 Can you identify names that may have had an even larger increase or decrease in popularity? (This requires you to consider every year as the start year and find the greatest increase/descrease across all years. Print out the top name for growth from each year.)
 ```{r}
 library(zoo)
-rollapply(dataset,FUN=roll_fun(dataset),width=1) 
-roll_fun<- function(dataset) {
+#1.Referring to the Question 4, get the long data shape into wide version.
+data_wide<- data_dcast
+data_delta_max<-data_wide
+data_delta_min<-data_wide
+for(row_idx in 1:nrow(data_wide)) {
+    row=as.numeric(data_wide[row_idx,-1])
+    # print(row)
+    row_maxs<- runmax(row,length(row),align = c("right"))
+    row_maxs[row_maxs==-Inf]=NA
+    row_maxs[row_maxs==Inf]=NA
+    # print(row_maxs)
+    delta<- (row-row_maxs) 
+    data_delta_max[row_idx,-1]<-delta
+    # break
+}
+for(row_idx in 1:nrow(data_wide)) {
+    row=as.numeric(data_wide[row_idx,-1])
+    # print(row)
+    row_mins<- runmin(row,length(row),align = c("right"))
+    row_mins[row_mins==-Inf]=NA
+    row_mins[row_mins==Inf]=NA
+    # print(row_mins)
+    delta<- (row-row_mins) 
+    data_delta_min[row_idx,-1]<-delta
+    # break
 }
 
+
+ 
+test<-c(NA,3,4,NA,7,2)
+test_min=runmin(c,6,align = c("right"))
+test_min_1=runmax(test-test_min,6,align = c("right"))
+test
+test_min
+test-test_min
+test_min_1
+
+idx_max = sort(as.matrix(data_1980$max_increase),decreasing=TRUE,index.return=TRUE)$ix
+head(data_1980[idx_max,],1)
 ```
 
 This gives interesting results, and may be used in a different way with a rolling window than using all the data. 
@@ -163,7 +191,8 @@ What insight can you extract from this dataset? Feel free to combine the baby na
 
 This is an open-ended question and you are free to answer as you see fit. In fact, it would be great if you find a way to look at the data that is highly interesting.
 ```{r}
-#Something related to the baby's name that linked to movies or others.
+#Something related to the baby's name
+#2. President name : Fit and Plot 
 
 ```
 
@@ -209,7 +238,7 @@ colnames(airlines_na)
 #get character of the columns
 char_col<- filter(data.table(v1=colnames(airlines_na),v2=sapply(as.data.table(airlines_na),class) ), v2=="character") %>% print
 
-unique(airlines_na$UniqueCarrier)
+unique(airlines_na$UniqueCarrier) 
 unique(airlines_na$TailNum)
 unique(airlines_na$Origin)
 unique(airlines_na$Dest)
