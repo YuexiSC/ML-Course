@@ -1,6 +1,7 @@
 ---
 title: 'HW on Handling Large Datasets: Questions'
 output: html_document
+author: "Chunfeng Wu, Joohyeun Yi, Katharine Grant, Ming-Chang Chiang, Yuexi Li"
 editor_options: 
   chunk_output_type: console
 ---
@@ -27,22 +28,29 @@ First, download the zip file and unzip it to grab the contents. You will see lot
 library(data.table)
 library(magrittr)
 setwd("/Users/liyuexi/Documents/Project/Homework/HW2/namesbystate/")
-getwd()
-
-file_list <- list.files(path='/Users/liyuexi/Documents/Project/Homework/HW2/namesbystate/') 
-dataset <- do.call("rbind", lapply(file_list, FUN=function(files) {read.table(paste('namesbystate/',files,sep=""), header=FALSE, sep=",")} 
-))
+file_list = list.files(path='/Users/liyuexi/Documents/Project/Homework/HW2/namesbystate/', full.names = TRUE)
+for (file in file_list){
+  if(!exists("dataset")){
+  dataset = fread(file, header = FALSE, sep = ",")
+  }
+  if(exists("dataset")){
+  temp_dataset = fread(file, header = FALSE, sep = ",")
+  dataset = rbind(dataset, temp_dataset)
+  rm(temp_dataset)
+  }
+}
 colnames(dataset)<- cbind('state','sex','birth_year','name','occurrence')
-sample(dataset)
 ```
 
 #### QUESTION 2
 What is the most popular name of all time across both genders? 
 ```{r}
 library(plyr)
+#Methodology: Select the name that has largest total number of occurrence in females and males. 
+#=========================================================================
 aggre_data<-aggregate(occurrence ~ name,dataset,sum)
 idx = sort(as.matrix(aggre_data$occurrence),decreasing=TRUE,index.return=TRUE)$ix
-head(aggre_data[idx,],15)
+head(aggre_data[idx,],1)
 ```
 Answer2:
 James
@@ -52,6 +60,9 @@ What is the most gender ambiguous name in 2013? 1945? (you need to come up with 
 ```{r}
 library(dplyr)
 library(plyr)
+#Assumption 1:
+#ambiguity definition: If a name is used by both female and male at the same frequency, we defined this name as ambiguitous name. And get each name's frequency used by females and males, get the min values from those min(frequncy_f, frequncy_m).
+#========================Ambiguity 1 ======================================
 Ambiguous_name<- function(df,input_year){
   #1.Subset the dataset into gender groups, and inner join two datasets by name. 
   inner_year<-merge( filter(df,birth_year==input_year, sex=='F'), filter(df,birth_year==input_year, sex=='M'), by='name')
@@ -68,6 +79,11 @@ Ambiguous_name<- function(df,input_year){
 Ambiguous_name(dataset,1945)
 Ambiguous_name(dataset,2013)
 
+
+#Assumption 2 Alice:
+#ambiguity definition: If a name is used by both female and male at the same frequency, we defined this name as ambiguitous name. If two names are satisfied by the first criteria, we will look at the frequency of these two names and define the higher frequency one as the most gender ambiguous name. 
+#========================Ambiguity 2 ======================================
+
 ```
 Answer:
 ambiguous name in 1945：Leslie
@@ -83,21 +99,20 @@ library(reshape)
 library(caTools)
 library(magrittr)
 library(plyr)
-#Question: Names has had largest percentage increase
-
+#Solution 1 Sara:
+#"find the name that has had the largest percentage increase in popularity since 1980". If we are getting the largest increase among the time from 1980 till now.
+#========================Solution1 ======================================
 #1. Aggregate dataset by Name and Birth_year get the total number of occurence 
 dataset2<- aggregate(dataset$occurrence~name+birth_year, dataset,sum)
 base_name<- dataset2[dataset2$birth_year==1980,]$name
 
-#2. Reshape the table 
+#2. Reshape the table from long format to wide
 idx_year<- list()
 for (ix in unique(dataset2$birth_year)) {
     ix<- paste("bir_",ix, sep="")
     idx_year<- c(idx_year,ix)
 }
-
 data_dcast<- dcast(dataset2, name ~ birth_year)
-data_dcast
 colnames(data_dcast)<-c("name",idx_year)
 data_shaped<-subset(data_dcast,select=c(name,bir_1980:bir_2016))
 data_shaped<-aggregate(.~name, data_shaped, FUN=sum,na.action=NULL)
@@ -132,6 +147,22 @@ head(data_1980[idx_max,],1)
 idx_min = sort(as.matrix(data_1980$max_decrease),decreasing=FALSE,index.return=TRUE)$ix
 head(data_1980[idx_min,],1)
 
+#Solution 1 Julia:
+#"find the name that has had the largest percentage increase in popularity since 1980". Means compare the time 1980 and 2016. 
+#========================Solution2 ======================================
+
+Q4_1980 = dataset %>% filter(year == 1980) %>% group_by(name) %>% summarise(`1980_freq` = sum(name_freq)) %>% select(name, `1980_freq`)
+Q4_2016 = dataset %>% filter(year == 2016) %>% group_by(name) %>% summarise(`2016_freq` = sum(name_freq)) %>% select(name, `2016_freq`)
+
+Q4 = Q4_1980 %>% full_join(Q4_2016, by = "name") %>% mutate(`1980_freq` = ifelse(is.na(`1980_freq`),1,`1980_freq`)) %>% mutate(`2016_freq` = ifelse(is.na(`2016_freq`),1,`2016_freq`)) %>% mutate(gap = ((`2016_freq` - `1980_freq`)/`1980_freq`) * 100 )
+Q4_increase = Q4[Q4$gap == max(Q4$gap), ]
+Q4_decrease = Q4[Q4$gap == min(Q4$gap), ]
+
+### solution 2 
+
+Q4 = Q4_1980 %>% inner_join(Q4_2016, by = "name") %>% mutate(gap = ((`2016_freq` - `1980_freq`)/`1980_freq`) * 100 )
+Q4_increase = Q4[Q4$gap == max(Q4$gap), ]
+Q4_decrease = Q4[Q4$gap == min(Q4$gap), ]
 ```
 Answers:
 Largest percentage of increase: Ashley
@@ -142,45 +173,22 @@ Largest percentage of decrease: Jennifer
 Can you identify names that may have had an even larger increase or decrease in popularity? (This requires you to consider every year as the start year and find the greatest increase/descrease across all years. Print out the top name for growth from each year.)
 ```{r}
 library(zoo)
-#1.Referring to the Question 4, get the long data shape into wide version.
-data_wide<- data_dcast
-data_delta_max<-data_wide
-data_delta_min<-data_wide
-for(row_idx in 1:nrow(data_wide)) {
-    row=as.numeric(data_wide[row_idx,-1])
-    # print(row)
-    row_maxs<- runmax(row,length(row),align = c("right"))
-    row_maxs[row_maxs==-Inf]=NA
-    row_maxs[row_maxs==Inf]=NA
-    # print(row_maxs)
-    delta<- (row-row_maxs) 
-    data_delta_max[row_idx,-1]<-delta
-    # break
+#Assumption: 
+#1.Get the table of historical change by using cummin/cummax function  
+Q5_decrease = dataset %>% group_by(name,birth_year) %>% summarise(sum_freq = sum(occurrence)) %>% mutate(cummax_freq = cummax(sum_freq)) %>% mutate(decrease = abs(sum_freq - cummax_freq))
+head(Q5_decrease)
+Q5_increase = dataset %>% group_by(name,birth_year) %>% summarise(sum_freq = sum(occurrence)) %>% mutate(cummin_freq = cummin(sum_freq)) %>% mutate(increase = abs(sum_freq - cummin_freq))
+year_list<- dataset$birth_year
+
+#2. Filter the dataset by name bank in each year and store the results in the res_table
+res_table<-data.frame(year=NA,top_name_increase=NA,increase=NA,top_name_decrease=NA, decrease=NA)
+for (id_y in 1911:2016) {
+  Q_in<-filter(Q5_increase,birth_year==id_y) %>% select(c("name","birth_year","increase"))
+  Q_de<-filter(Q5_decrease,birth_year==id_y) %>% select(c("name","birth_year","decrease"))
+  res<- c(id_y,Q_in[which.max(Q_in$increase),]$name, tail(sort(Q_in$increase),1),
+          Q_de[which.max(Q_de$decrease),]$name,tail(sort(Q_de$decrease),1))
+  res_table<-rbind(res_table,res) 
 }
-for(row_idx in 1:nrow(data_wide)) {
-    row=as.numeric(data_wide[row_idx,-1])
-    # print(row)
-    row_mins<- runmin(row,length(row),align = c("right"))
-    row_mins[row_mins==-Inf]=NA
-    row_mins[row_mins==Inf]=NA
-    # print(row_mins)
-    delta<- (row-row_mins) 
-    data_delta_min[row_idx,-1]<-delta
-    # break
-}
-
-
- 
-test<-c(NA,3,4,NA,7,2)
-test_min=runmin(c,6,align = c("right"))
-test_min_1=runmax(test-test_min,6,align = c("right"))
-test
-test_min
-test-test_min
-test_min_1
-
-idx_max = sort(as.matrix(data_1980$max_increase),decreasing=TRUE,index.return=TRUE)$ix
-head(data_1980[idx_max,],1)
 ```
 
 This gives interesting results, and may be used in a different way with a rolling window than using all the data. 
@@ -191,8 +199,27 @@ What insight can you extract from this dataset? Feel free to combine the baby na
 
 This is an open-ended question and you are free to answer as you see fit. In fact, it would be great if you find a way to look at the data that is highly interesting.
 ```{r}
-#Something related to the baby's name
-#2. President name : Fit and Plot 
+library(ggplot2)
+# Dataset
+dataset2<- aggregate(dataset$occurrence~name+birth_year, dataset,sum)
+without_na<-dataset2[complete.cases(dataset2),] 
+names(without_na)<-c("name","birth_year","occurrence")
+
+#Film data source: You can add on the next
+Film=c("Frozen",
+       "Journey to the Center of the Earth")
+Film = c('Elsa',
+         'Axel')
+Release_year = c(2010,
+                 2008 )
+plot_func<-function(film,name,release_year){
+  for (i in 1:length(Film)) {
+  df <- filter(without_na,without_na$name==Name[i])
+  plot1<-ggplot(df, aes(x = birth_year, y = occurrence))+geom_line()+geom_vline(xintercept = (as.numeric(Release_year[i])), colour='red',size=2)
+  print(plot1+labs(title=paste(Film[i],":", Name[i])))
+}
+}
+plot_func(Film,Name,Release_year)
 
 ```
 
@@ -203,8 +230,11 @@ http://stat-computing.org/dataexpo/2009/the-data.html.
 Read in the airlines data set for 2008 into a data frame.
 How many rows of data do you have?
 ```{r}
-airlines<- fread("2008.csv",header=TRUE) 
-dim(airlines)
+library(data.table)
+download.file("http://stat-computing.org/dataexpo/2009/2008.csv.bz2",
+              destfile="2008.csv.bz2")
+DT <- fread("2008.csv")
+nrow(DT)
 ```
 Answers:
 7009728 rows total
@@ -213,10 +243,9 @@ Answers:
 
 Remove all rows of the data frame with missing data. How many rows of data do you have now?
 ```{r}
-library(DT)
-idx1 = which(rowSums(is.na(airlines))==0)
-airlines_na = airlines[idx1,] 
-sample(airlines_na)
+row.has.na = apply(DT, 1, function(x){any(is.na(x))})
+DT.filtered = DT[!row.has.na]
+nrow(DT.filtered)
 ``` 
 Answer:
 Has 1524735 rows
@@ -225,31 +254,26 @@ Has 1524735 rows
 
 Fit one regression model each to explain "DepDelay" and "ArrDelay". Use your judgment as to which variables you might use to explain these outcomes. Use a subset of 1 million rows of the data you created with no missing data. Keep the remaining data for out-of-sample testing. (**Remember to factor all categorical variables.**)
 ```{r}
-library(caret)
-library(lattice)
-library(ggplot2)
-library(data.table)
-colnames(airlines_na)
-data(airlines_na)
-inTrain <- createDataPartition(y=airlines_na$ArrDelay, p=0.7, list=F) 
-train_airlines<- airlines_na[inTrain, ] 
-test_airlines<- airlines_na[-inTrain, ]
-colnames(airlines_na)
-#get character of the columns
-char_col<- filter(data.table(v1=colnames(airlines_na),v2=sapply(as.data.table(airlines_na),class) ), v2=="character") %>% print
+DT.filtered_train = DT.filtered[1:1000000]
+resDepDelay = lm(DepDelay ~ factor(UniqueCarrier)+ factor(Origin) + Cancelled + factor(DayofMonth) + 
+                   TaxiIn + factor(DayOfWeek) + WeatherDelay + NASDelay + SecurityDelay +
+                   LateAircraftDelay, data = DT.filtered_train)
+summary(resDepDelay)
 
-unique(airlines_na$UniqueCarrier) 
-unique(airlines_na$TailNum)
-unique(airlines_na$Origin)
-unique(airlines_na$Dest)
-unique(airlines_na$CancellationCode)
-
+resArrDelay = lm(ArrDelay ~ factor(UniqueCarrier)+ DepDelay + factor(Dest) + AirTime*Distance + Cancelled +
+                   factor(DayofMonth) + factor(DayOfWeek) + WeatherDelay + NASDelay +
+                   SecurityDelay + LateAircraftDelay, data = DT.filtered_train)
+summary(resArrDelay)
 ```
 #### QUESTION 10
 
 Now take the fitted regression and predict delays using the remaining data from the no-missing data set (this is the data you did not use in the fitting the model). Compare this to the actual delays and report the absolute mean error in your prediction. 
 ```{r}
-
-
+DT.filtered_test = DT.filtered[1000001 : 1524735]
+#DT.filtered_test = setdiff(DT.filtered, DT.filtered[1:1000000])
+fitted_Arr = predict(resArrDelay)
+mae_Arr = mean( abs(fitted_Arr - DT.filtered_test$ArrDelay), na.rm = TRUE)
+fitted_Dep = predict(resDepDelay)
+mae_Dep = mean( abs(fitted_Dep - DT.filtered_test$DepDelay), na.rm = TRUE) 
 ```
 
