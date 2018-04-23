@@ -1,7 +1,7 @@
 ---
 title: 'HW on Handling Large Datasets: Questions'
 output: html_document
-author: "Chunfeng Wu, Joohyeun Yi, Katharine Grant, Ming-Chang Chiang, Yuexi Li"
+author: "Yuexi Li"
 editor_options: 
   chunk_output_type: console
 ---
@@ -46,8 +46,6 @@ colnames(dataset)<- cbind('state','sex','birth_year','name','occurrence')
 What is the most popular name of all time across both genders? 
 ```{r}
 library(plyr)
-#Methodology: Select the name that has largest total number of occurrence in females and males. 
-#=========================================================================
 aggre_data<-aggregate(occurrence ~ name,dataset,sum)
 idx = sort(as.matrix(aggre_data$occurrence),decreasing=TRUE,index.return=TRUE)$ix
 head(aggre_data[idx,],1)
@@ -60,9 +58,6 @@ What is the most gender ambiguous name in 2013? 1945? (you need to come up with 
 ```{r}
 library(dplyr)
 library(plyr)
-#Assumption 1:
-#ambiguity definition: If a name is used by both female and male at the same frequency, we defined this name as ambiguitous name. And get each name's frequency used by females and males, get the min values from those min(frequncy_f, frequncy_m).
-#========================Ambiguity 1 ======================================
 Ambiguous_name<- function(df,input_year){
   #1.Subset the dataset into gender groups, and inner join two datasets by name. 
   inner_year<-merge( filter(df,birth_year==input_year, sex=='F'), filter(df,birth_year==input_year, sex=='M'), by='name')
@@ -79,11 +74,6 @@ Ambiguous_name<- function(df,input_year){
 Ambiguous_name(dataset,1945)
 Ambiguous_name(dataset,2013)
 
-
-#Assumption 2 Alice:
-#ambiguity definition: If a name is used by both female and male at the same frequency, we defined this name as ambiguitous name. If two names are satisfied by the first criteria, we will look at the frequency of these two names and define the higher frequency one as the most gender ambiguous name. 
-#========================Ambiguity 2 ======================================
-
 ```
 Answer:
 ambiguous name in 1945：Leslie
@@ -99,10 +89,7 @@ library(reshape)
 library(caTools)
 library(magrittr)
 library(plyr)
-#Solution 1 Sara:
-#"find the name that has had the largest percentage increase in popularity since 1980". If we are getting the largest increase among the time from 1980 till now.
-#========================Solution1 ======================================
-#1. Aggregate dataset by Name and Birth_year get the total number of occurence 
+
 dataset2<- aggregate(dataset$occurrence~name+birth_year, dataset,sum)
 base_name<- dataset2[dataset2$birth_year==1980,]$name
 
@@ -147,22 +134,6 @@ head(data_1980[idx_max,],1)
 idx_min = sort(as.matrix(data_1980$max_decrease),decreasing=FALSE,index.return=TRUE)$ix
 head(data_1980[idx_min,],1)
 
-#Solution 1 Julia:
-#"find the name that has had the largest percentage increase in popularity since 1980". Means compare the time 1980 and 2016. 
-#========================Solution2 ======================================
-
-Q4_1980 = dataset %>% filter(year == 1980) %>% group_by(name) %>% summarise(`1980_freq` = sum(name_freq)) %>% select(name, `1980_freq`)
-Q4_2016 = dataset %>% filter(year == 2016) %>% group_by(name) %>% summarise(`2016_freq` = sum(name_freq)) %>% select(name, `2016_freq`)
-
-Q4 = Q4_1980 %>% full_join(Q4_2016, by = "name") %>% mutate(`1980_freq` = ifelse(is.na(`1980_freq`),1,`1980_freq`)) %>% mutate(`2016_freq` = ifelse(is.na(`2016_freq`),1,`2016_freq`)) %>% mutate(gap = ((`2016_freq` - `1980_freq`)/`1980_freq`) * 100 )
-Q4_increase = Q4[Q4$gap == max(Q4$gap), ]
-Q4_decrease = Q4[Q4$gap == min(Q4$gap), ]
-
-### solution 2 
-
-Q4 = Q4_1980 %>% inner_join(Q4_2016, by = "name") %>% mutate(gap = ((`2016_freq` - `1980_freq`)/`1980_freq`) * 100 )
-Q4_increase = Q4[Q4$gap == max(Q4$gap), ]
-Q4_decrease = Q4[Q4$gap == min(Q4$gap), ]
 ```
 Answers:
 Largest percentage of increase: Ashley
@@ -220,7 +191,6 @@ plot_func<-function(film,name,release_year){
 }
 }
 plot_func(Film,Name,Release_year)
-
 ```
 
 #### QUESTION 7
@@ -231,10 +201,9 @@ Read in the airlines data set for 2008 into a data frame.
 How many rows of data do you have?
 ```{r}
 library(data.table)
-download.file("http://stat-computing.org/dataexpo/2009/2008.csv.bz2",
-              destfile="2008.csv.bz2")
-DT <- fread("2008.csv")
-nrow(DT)
+setwd("/Users/liyuexi/Documents/Project/Homework/HW2")
+airlines<- fread("2008.csv",header=TRUE) 
+dim(airlines)
 ```
 Answers:
 7009728 rows total
@@ -243,9 +212,10 @@ Answers:
 
 Remove all rows of the data frame with missing data. How many rows of data do you have now?
 ```{r}
-row.has.na = apply(DT, 1, function(x){any(is.na(x))})
-DT.filtered = DT[!row.has.na]
-nrow(DT.filtered)
+library(DT)
+idx1 = which(rowSums(is.na(airlines))==0)
+airlines_na = airlines[idx1,] 
+sample(airlines_na)
 ``` 
 Answer:
 Has 1524735 rows
@@ -254,26 +224,26 @@ Has 1524735 rows
 
 Fit one regression model each to explain "DepDelay" and "ArrDelay". Use your judgment as to which variables you might use to explain these outcomes. Use a subset of 1 million rows of the data you created with no missing data. Keep the remaining data for out-of-sample testing. (**Remember to factor all categorical variables.**)
 ```{r}
-DT.filtered_train = DT.filtered[1:1000000]
+airlines_na_train = airlines_na[1:1000000]
 resDepDelay = lm(DepDelay ~ factor(UniqueCarrier)+ factor(Origin) + Cancelled + factor(DayofMonth) + 
                    TaxiIn + factor(DayOfWeek) + WeatherDelay + NASDelay + SecurityDelay +
-                   LateAircraftDelay, data = DT.filtered_train)
+                   LateAircraftDelay, data = airlines_na_train)
 summary(resDepDelay)
 
 resArrDelay = lm(ArrDelay ~ factor(UniqueCarrier)+ DepDelay + factor(Dest) + AirTime*Distance + Cancelled +
                    factor(DayofMonth) + factor(DayOfWeek) + WeatherDelay + NASDelay +
-                   SecurityDelay + LateAircraftDelay, data = DT.filtered_train)
+                   SecurityDelay + LateAircraftDelay, data = airlines_na_train)
 summary(resArrDelay)
 ```
 #### QUESTION 10
 
 Now take the fitted regression and predict delays using the remaining data from the no-missing data set (this is the data you did not use in the fitting the model). Compare this to the actual delays and report the absolute mean error in your prediction. 
 ```{r}
-DT.filtered_test = DT.filtered[1000001 : 1524735]
+airlines_na_test = airlines_na[1000001 : 1524735]
 #DT.filtered_test = setdiff(DT.filtered, DT.filtered[1:1000000])
 fitted_Arr = predict(resArrDelay)
-mae_Arr = mean( abs(fitted_Arr - DT.filtered_test$ArrDelay), na.rm = TRUE)
+mae_Arr = mean( abs(fitted_Arr - airlines_na_test$ArrDelay), na.rm = TRUE)
 fitted_Dep = predict(resDepDelay)
-mae_Dep = mean( abs(fitted_Dep - DT.filtered_test$DepDelay), na.rm = TRUE) 
+mae_Dep = mean( abs(fitted_Dep - airlines_na_test$DepDelay), na.rm = TRUE) 
 ```
 
